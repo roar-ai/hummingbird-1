@@ -243,12 +243,10 @@ class HummingbirdPipeline(
         text_encoder: CLIPTextModel,
         text_encoder_2: CLIPTextModelWithProjection,
         image_encoder: CLIPVisionModelWithProjection,
-        # image_encoder_2: CLIPVisionModelWithProjection,
         tokenizer: CLIPTokenizer,
         tokenizer_2: CLIPTokenizer,
         unet: UNet2DConditionModel,
         scheduler: KarrasDiffusionSchedulers,
-        # image_encoder: CLIPVisionModelWithProjection = None,
         feature_extractor: CLIPImageProcessor = None,
         force_zeros_for_empty_prompt: bool = True,
         add_watermarker: Optional[bool] = None,
@@ -656,6 +654,7 @@ class HummingbirdPipeline(
 
         if not isinstance(image, torch.Tensor):
             image = self.feature_extractor(images=image, return_tensors="pt").pixel_values
+            # image = self.image_encoder(images=image, return_tensors="pt").pixel_values
 
         image = image.to(device=device, dtype=dtype)
         pooled_prompt_embeds = current_image_encoder(image).image_embeds
@@ -758,154 +757,154 @@ class HummingbirdPipeline(
 
         return prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds
 
-    def encode_image_custom(
-        self,
-        image: list,
-        device: Optional[torch.device] = None,
-        num_images_per_prompt: int = 1,
-        do_classifier_free_guidance: bool = True,
-        negative_prompt: Optional[str] = None,
-        negative_prompt_2: Optional[str] = None,
-        prompt_embeds: Optional[torch.Tensor] = None,
-        negative_prompt_embeds: Optional[torch.Tensor] = None,
-        pooled_prompt_embeds: Optional[torch.Tensor] = None,
-        negative_pooled_prompt_embeds: Optional[torch.Tensor] = None,
-        lora_scale: Optional[float] = None,
-        clip_skip: Optional[int] = None,
-    ):
-        r"""
-        Encodes the prompt into text encoder hidden states.
+    # def encode_image_custom(
+    #     self,
+    #     image: list,
+    #     device: Optional[torch.device] = None,
+    #     num_images_per_prompt: int = 1,
+    #     do_classifier_free_guidance: bool = True,
+    #     negative_prompt: Optional[str] = None,
+    #     negative_prompt_2: Optional[str] = None,
+    #     prompt_embeds: Optional[torch.Tensor] = None,
+    #     negative_prompt_embeds: Optional[torch.Tensor] = None,
+    #     pooled_prompt_embeds: Optional[torch.Tensor] = None,
+    #     negative_pooled_prompt_embeds: Optional[torch.Tensor] = None,
+    #     lora_scale: Optional[float] = None,
+    #     clip_skip: Optional[int] = None,
+    # ):
+    #     r"""
+    #     Encodes the prompt into text encoder hidden states.
 
-        Args:
-            prompt (`str` or `List[str]`, *optional*):
-                prompt to be encoded
-            prompt_2 (`str` or `List[str]`, *optional*):
-                The prompt or prompts to be sent to the `tokenizer_2` and `text_encoder_2`. If not defined, `prompt` is
-                used in both text-encoders
-            device: (`torch.device`):
-                torch device
-            num_images_per_prompt (`int`):
-                number of images that should be generated per prompt
-            do_classifier_free_guidance (`bool`):
-                whether to use classifier free guidance or not
-            negative_prompt (`str` or `List[str]`, *optional*):
-                The prompt or prompts not to guide the image generation. If not defined, one has to pass
-                `negative_prompt_embeds` instead. Ignored when not using guidance (i.e., ignored if `guidance_scale` is
-                less than `1`).
-            negative_prompt_2 (`str` or `List[str]`, *optional*):
-                The prompt or prompts not to guide the image generation to be sent to `tokenizer_2` and
-                `text_encoder_2`. If not defined, `negative_prompt` is used in both text-encoders
-            prompt_embeds (`torch.Tensor`, *optional*):
-                Pre-generated text embeddings. Can be used to easily tweak text inputs, *e.g.* prompt weighting. If not
-                provided, text embeddings will be generated from `prompt` input argument.
-            negative_prompt_embeds (`torch.Tensor`, *optional*):
-                Pre-generated negative text embeddings. Can be used to easily tweak text inputs, *e.g.* prompt
-                weighting. If not provided, negative_prompt_embeds will be generated from `negative_prompt` input
-                argument.
-            pooled_prompt_embeds (`torch.Tensor`, *optional*):
-                Pre-generated pooled text embeddings. Can be used to easily tweak text inputs, *e.g.* prompt weighting.
-                If not provided, pooled text embeddings will be generated from `prompt` input argument.
-            negative_pooled_prompt_embeds (`torch.Tensor`, *optional*):
-                Pre-generated negative pooled text embeddings. Can be used to easily tweak text inputs, *e.g.* prompt
-                weighting. If not provided, pooled negative_prompt_embeds will be generated from `negative_prompt`
-                input argument.
-            lora_scale (`float`, *optional*):
-                A lora scale that will be applied to all LoRA layers of the text encoder if LoRA layers are loaded.
-            clip_skip (`int`, *optional*):
-                Number of layers to be skipped from CLIP while computing the prompt embeddings. A value of 1 means that
-                the output of the pre-final layer will be used for computing the prompt embeddings.
-        """
-        device = device or self._execution_device
+    #     Args:
+    #         prompt (`str` or `List[str]`, *optional*):
+    #             prompt to be encoded
+    #         prompt_2 (`str` or `List[str]`, *optional*):
+    #             The prompt or prompts to be sent to the `tokenizer_2` and `text_encoder_2`. If not defined, `prompt` is
+    #             used in both text-encoders
+    #         device: (`torch.device`):
+    #             torch device
+    #         num_images_per_prompt (`int`):
+    #             number of images that should be generated per prompt
+    #         do_classifier_free_guidance (`bool`):
+    #             whether to use classifier free guidance or not
+    #         negative_prompt (`str` or `List[str]`, *optional*):
+    #             The prompt or prompts not to guide the image generation. If not defined, one has to pass
+    #             `negative_prompt_embeds` instead. Ignored when not using guidance (i.e., ignored if `guidance_scale` is
+    #             less than `1`).
+    #         negative_prompt_2 (`str` or `List[str]`, *optional*):
+    #             The prompt or prompts not to guide the image generation to be sent to `tokenizer_2` and
+    #             `text_encoder_2`. If not defined, `negative_prompt` is used in both text-encoders
+    #         prompt_embeds (`torch.Tensor`, *optional*):
+    #             Pre-generated text embeddings. Can be used to easily tweak text inputs, *e.g.* prompt weighting. If not
+    #             provided, text embeddings will be generated from `prompt` input argument.
+    #         negative_prompt_embeds (`torch.Tensor`, *optional*):
+    #             Pre-generated negative text embeddings. Can be used to easily tweak text inputs, *e.g.* prompt
+    #             weighting. If not provided, negative_prompt_embeds will be generated from `negative_prompt` input
+    #             argument.
+    #         pooled_prompt_embeds (`torch.Tensor`, *optional*):
+    #             Pre-generated pooled text embeddings. Can be used to easily tweak text inputs, *e.g.* prompt weighting.
+    #             If not provided, pooled text embeddings will be generated from `prompt` input argument.
+    #         negative_pooled_prompt_embeds (`torch.Tensor`, *optional*):
+    #             Pre-generated negative pooled text embeddings. Can be used to easily tweak text inputs, *e.g.* prompt
+    #             weighting. If not provided, pooled negative_prompt_embeds will be generated from `negative_prompt`
+    #             input argument.
+    #         lora_scale (`float`, *optional*):
+    #             A lora scale that will be applied to all LoRA layers of the text encoder if LoRA layers are loaded.
+    #         clip_skip (`int`, *optional*):
+    #             Number of layers to be skipped from CLIP while computing the prompt embeddings. A value of 1 means that
+    #             the output of the pre-final layer will be used for computing the prompt embeddings.
+    #     """
+    #     device = device or self._execution_device
 
-        # set lora scale so that monkey patched LoRA
-        # function of text encoder can correctly access it
-        if lora_scale is not None and isinstance(self, StableDiffusionXLLoraLoaderMixin):
-            self._lora_scale = lora_scale
+    #     # set lora scale so that monkey patched LoRA
+    #     # function of text encoder can correctly access it
+    #     if lora_scale is not None and isinstance(self, StableDiffusionXLLoraLoaderMixin):
+    #         self._lora_scale = lora_scale
 
-            # dynamically adjust the LoRA scale
-            if self.text_encoder is not None:
-                if not USE_PEFT_BACKEND:
-                    adjust_lora_scale_text_encoder(self.text_encoder, lora_scale)
-                else:
-                    scale_lora_layers(self.text_encoder, lora_scale)
+    #         # dynamically adjust the LoRA scale
+    #         if self.text_encoder is not None:
+    #             if not USE_PEFT_BACKEND:
+    #                 adjust_lora_scale_text_encoder(self.text_encoder, lora_scale)
+    #             else:
+    #                 scale_lora_layers(self.text_encoder, lora_scale)
 
-            if self.text_encoder_2 is not None:
-                if not USE_PEFT_BACKEND:
-                    adjust_lora_scale_text_encoder(self.text_encoder_2, lora_scale)
-                else:
-                    scale_lora_layers(self.text_encoder_2, lora_scale)
+    #         if self.text_encoder_2 is not None:
+    #             if not USE_PEFT_BACKEND:
+    #                 adjust_lora_scale_text_encoder(self.text_encoder_2, lora_scale)
+    #             else:
+    #                 scale_lora_layers(self.text_encoder_2, lora_scale)
 
-        batch_size = len(image)
+    #     batch_size = len(image)
 
-        # Define tokenizers and text encoders
-        tokenizers = [self.feature_extractor, self.feature_extractor]
-        image_encoders = [self.image_encoder, self.image_encoder_2]
+    #     # Define tokenizers and text encoders
+    #     tokenizers = [self.feature_extractor, self.feature_extractor]
+    #     image_encoders = [self.image_encoder, self.image_encoder_2]
 
-        # textual inversion: process multi-vector tokens if necessary
-        prompt_embeds_list = []
-        images = [image, image]
-        for image, processor, image_encoder in zip(images, tokenizers, image_encoders):
-            # if isinstance(self, TextualInversionLoaderMixin):
-            #     image = self.maybe_convert_prompt(image, processor)
+    #     # textual inversion: process multi-vector tokens if necessary
+    #     prompt_embeds_list = []
+    #     images = [image, image]
+    #     for image, processor, image_encoder in zip(images, tokenizers, image_encoders):
+    #         # if isinstance(self, TextualInversionLoaderMixin):
+    #         #     image = self.maybe_convert_prompt(image, processor)
 
-            inputs = processor(images=image, return_tensors="pt").pixel_values.to(device)
-            prompt_embeds = image_encoder(inputs)
-            print(prompt_embeds)
-            # We are only ALWAYS interested in the pooled output of the final text encoder
-            pooled_prompt_embeds = prompt_embeds.image_embeds
-            prompt_embeds = pooled_prompt_embeds.unsqueeze(1)
+    #         inputs = processor(images=image, return_tensors="pt").pixel_values.to(device)
+    #         prompt_embeds = image_encoder(inputs)
+    #         print(prompt_embeds)
+    #         # We are only ALWAYS interested in the pooled output of the final text encoder
+    #         pooled_prompt_embeds = prompt_embeds.image_embeds
+    #         prompt_embeds = pooled_prompt_embeds.unsqueeze(1)
 
-            prompt_embeds_list.append(prompt_embeds)
+    #         prompt_embeds_list.append(prompt_embeds)
 
-        prompt_embeds = torch.concat(prompt_embeds_list, dim=-1)
+    #     prompt_embeds = torch.concat(prompt_embeds_list, dim=-1)
 
-        # get unconditional embeddings for classifier free guidance
-        zero_out_negative_prompt = negative_prompt is None and self.config.force_zeros_for_empty_prompt
-        if do_classifier_free_guidance and negative_prompt_embeds is None and zero_out_negative_prompt:
-            negative_prompt_embeds = torch.zeros_like(prompt_embeds)
-            negative_pooled_prompt_embeds = torch.zeros_like(pooled_prompt_embeds)
+    #     # get unconditional embeddings for classifier free guidance
+    #     zero_out_negative_prompt = negative_prompt is None and self.config.force_zeros_for_empty_prompt
+    #     if do_classifier_free_guidance and negative_prompt_embeds is None and zero_out_negative_prompt:
+    #         negative_prompt_embeds = torch.zeros_like(prompt_embeds)
+    #         negative_pooled_prompt_embeds = torch.zeros_like(pooled_prompt_embeds)
 
-        if self.image_encoder_2 is not None:
-            prompt_embeds = prompt_embeds.to(dtype=self.image_encoder_2.dtype, device=device)
-        else:
-            prompt_embeds = prompt_embeds.to(dtype=self.unet.dtype, device=device)
+    #     if self.image_encoder_2 is not None:
+    #         prompt_embeds = prompt_embeds.to(dtype=self.image_encoder_2.dtype, device=device)
+    #     else:
+    #         prompt_embeds = prompt_embeds.to(dtype=self.unet.dtype, device=device)
 
-        bs_embed, seq_len, _ = prompt_embeds.shape
-        # duplicate text embeddings for each generation per prompt, using mps friendly method
-        prompt_embeds = prompt_embeds.repeat(1, num_images_per_prompt, 1)
-        prompt_embeds = prompt_embeds.view(bs_embed * num_images_per_prompt, seq_len, -1)
+    #     bs_embed, seq_len, _ = prompt_embeds.shape
+    #     # duplicate text embeddings for each generation per prompt, using mps friendly method
+    #     prompt_embeds = prompt_embeds.repeat(1, num_images_per_prompt, 1)
+    #     prompt_embeds = prompt_embeds.view(bs_embed * num_images_per_prompt, seq_len, -1)
 
-        if do_classifier_free_guidance:
-            # duplicate unconditional embeddings for each generation per prompt, using mps friendly method
-            seq_len = negative_prompt_embeds.shape[1]
+    #     if do_classifier_free_guidance:
+    #         # duplicate unconditional embeddings for each generation per prompt, using mps friendly method
+    #         seq_len = negative_prompt_embeds.shape[1]
 
-            if self.image_encoder_2 is not None:
-                negative_prompt_embeds = negative_prompt_embeds.to(dtype=self.image_encoder_2.dtype, device=device)
-            else:
-                negative_prompt_embeds = negative_prompt_embeds.to(dtype=self.unet.dtype, device=device)
+    #         if self.image_encoder_2 is not None:
+    #             negative_prompt_embeds = negative_prompt_embeds.to(dtype=self.image_encoder_2.dtype, device=device)
+    #         else:
+    #             negative_prompt_embeds = negative_prompt_embeds.to(dtype=self.unet.dtype, device=device)
 
-            negative_prompt_embeds = negative_prompt_embeds.repeat(1, num_images_per_prompt, 1)
-            negative_prompt_embeds = negative_prompt_embeds.view(batch_size * num_images_per_prompt, seq_len, -1)
+    #         negative_prompt_embeds = negative_prompt_embeds.repeat(1, num_images_per_prompt, 1)
+    #         negative_prompt_embeds = negative_prompt_embeds.view(batch_size * num_images_per_prompt, seq_len, -1)
 
-        pooled_prompt_embeds = pooled_prompt_embeds.repeat(1, num_images_per_prompt).view(
-            bs_embed * num_images_per_prompt, -1
-        )
-        if do_classifier_free_guidance:
-            negative_pooled_prompt_embeds = negative_pooled_prompt_embeds.repeat(1, num_images_per_prompt).view(
-                bs_embed * num_images_per_prompt, -1
-            )
+    #     pooled_prompt_embeds = pooled_prompt_embeds.repeat(1, num_images_per_prompt).view(
+    #         bs_embed * num_images_per_prompt, -1
+    #     )
+    #     if do_classifier_free_guidance:
+    #         negative_pooled_prompt_embeds = negative_pooled_prompt_embeds.repeat(1, num_images_per_prompt).view(
+    #             bs_embed * num_images_per_prompt, -1
+    #         )
 
-        if self.image_encoder is not None:
-            if isinstance(self, StableDiffusionXLLoraLoaderMixin) and USE_PEFT_BACKEND:
-                # Retrieve the original scale by scaling back the LoRA layers
-                unscale_lora_layers(self.text_encoder, lora_scale)
+    #     if self.image_encoder is not None:
+    #         if isinstance(self, StableDiffusionXLLoraLoaderMixin) and USE_PEFT_BACKEND:
+    #             # Retrieve the original scale by scaling back the LoRA layers
+    #             unscale_lora_layers(self.text_encoder, lora_scale)
 
-        if self.image_encoder_2 is not None:
-            if isinstance(self, StableDiffusionXLLoraLoaderMixin) and USE_PEFT_BACKEND:
-                # Retrieve the original scale by scaling back the LoRA layers
-                unscale_lora_layers(self.text_encoder_2, lora_scale)
+    #     if self.image_encoder_2 is not None:
+    #         if isinstance(self, StableDiffusionXLLoraLoaderMixin) and USE_PEFT_BACKEND:
+    #             # Retrieve the original scale by scaling back the LoRA layers
+    #             unscale_lora_layers(self.text_encoder_2, lora_scale)
 
-        return prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds
+    #     return prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds
 
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.encode_image
     def encode_image(self, image, device, num_images_per_prompt, output_hidden_states=None):

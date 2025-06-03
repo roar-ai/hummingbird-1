@@ -25,11 +25,11 @@ def generate_images(pipe, args):
     pipe = accelerator.prepare(pipe)
     pipe = pipe.to(accelerator.device)
     processor = LlavaNextProcessor.from_pretrained(
-        "llava-v1.6-mistral-7b-hf"
+        "/mnt/minhquan/llava-v1.6-mistral-7b-hf"
     )
 
     vlm = LlavaNextForConditionalGeneration.from_pretrained(
-        "llava-v1.6-mistral-7b-hf",
+        "/mnt/minhquan/llava-v1.6-mistral-7b-hf",
         torch_dtype=torch.float16,
         low_cpu_mem_usage=True,
         use_flash_attention_2=True,
@@ -67,13 +67,13 @@ def main():
     from pipelines.pipeline_stable_diffusion_xl import HummingbirdPipeline
 
     pipe = HummingbirdPipeline.from_pretrained(
-        "hummingbird/stable-diffusion-xl-base-1.0"
+        "/mnt/minhquan/stable-diffusion-xl-base-1.0"
     )
     from peft import PeftModel
 
     pipe.unet = PeftModel.from_pretrained(
         pipe.unet,
-        "hummingbird/lora_unet_65000",
+        "/mnt/minhquan/imagecraftor/outputs/vqav2_gqa_sdxl_blip2_label_all_itm/ic_unet_65000",
     )
     
     pipe.unet.eval()

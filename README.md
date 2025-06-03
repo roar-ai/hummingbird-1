@@ -1,99 +1,122 @@
-## TextCraftor<br><sub>Your Text Encoder Can be Image Quality Controller</sub>
-[Webpage](https://snap-research.github.io/textcraftor/) | [arXiv](https://arxiv.org/abs/2403.18978)
+## Hummingbird: High Fidelity Image Generation via Multimodal Context Alignment [ICLR 2025]
+[Webpage](https://roar-ai.github.io/hummingbird) | [Paper](https://openreview.net/forum?id=6kPBThI6ZJ)
 
-### This is the official PyTorch implementation of paper: [TextCraftor: Your Text Encoder Can be Image Quality Controller](https://arxiv.org/abs/2403.18978)
+### Official implementation of paper: [Hummingbird: High Fidelity Image Generation via Multimodal Context Alignment](https://openreview.net/pdf?id=6kPBThI6ZJ) 
+
+![image/png](https://roar-ai.github.io/hummingbird/static/images/teaser_comparison_v1.png)
+
 
 ## Prerequisites
 
 ### Installation
-
-`conda` virtual environment with Python 3.8+, PyTorch 2.0+ is recommended. In your venv, run 
+1. Clone this repository and navigate to hummingbird-1 folder
 ```
+git clone https://github.com/roar-ai/hummingbird-1
+cd hummingbird-1
+```
+
+
+2. Create `conda` virtual environment with Python 3.9, PyTorch 2.0+ is recommended:
+```
+conda create -n hummingbird python=3.9
+conda activate hummingbird
+pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cu124
 pip install -r requirements.txt
 ```
 
-[//]: # (Please note that we make external libraries &#40;HPSv2, PickScore, Aesthetic score&#41; as built-in functions, so they are installation-free. )
-
-### Data preparation
-
-This repo provides the script of prompt-based finetuning, so only prompt data is needed for training. In this work we use [open-prompts by krea-ai](https://github.com/krea-ai/open-prompts), which can be downloaded [here](https://github.com/krea-ai/open-prompts?tab=readme-ov-file#csv-file). The data (`openprompts.csv`) takes a few GBs in disk. 
-
-For testing (Parti-Prompts and HPSv2 benchmark), the data will be gathered on-the-fly, no preparation is needed. See Testing section below. 
+3. Install additional packages for faster training and inference
+```
+pip install flash-attn --no-build-isolation
+```
 
 ### Download necessary models
-Due to GitHub file size limit, we do not hold model weights in this repo. You need to
-1. Follow instructions [here](https://huggingface.co/docs/diffusers/quicktour#local-pipeline) to download Stable Diffusion v1.5. You can soft-link your model into this directory if you already have one. It should appear in this directory as `./stable-diffusion-v1-5`.
-2. Download [HPSv2 weights](https://drive.google.com/file/d/1T4e6WqsS5lcs92HdmzQYonrfDH1Ub53T/view?usp=sharing) and put it here: `hpsv2/HPS_v2_compressed.pt`. 
-3. Download [PickScore model weights](https://drive.google.com/file/d/1UhR0zFXiEI-spt2QdX67FY9a0dcqa9xy/view?usp=sharing) and put it here: `pickscore/pickmodel/model.safetensors`. 
+1. Clone our Hummingbird LoRA weight of UNet denoiser
+```
+git clone https://huggingface.co/lmquan/hummingbird
+```
+
+2. Refer to [stabilityai/stable-diffusion-xl-base-1.0](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/tree/main) to download SDXL pre-trained model and place it in the hummingbird weight directory as `./hummingbird/stable-diffusion-xl-base-1.0`.
+
+3. Download [laion/CLIP-ViT-bigG-14-laion2B-39B-b160k](https://huggingface.co/laion/CLIP-ViT-bigG-14-laion2B-39B-b160k/tree/main) for `feature extractor` and `image encoder` in Hummmingbird framework
+```
+cp -r CLIP-ViT-bigG-14-laion2B-39B-b160k ./hummingbird/stable-diffusion-xl-base-1.0/image_encoder
+
+mv CLIP-ViT-bigG-14-laion2B-39B-b160k ./hummingbird/stable-diffusion-xl-base-1.0/feature_extractor
+```
+
+4. Replace the file `model_index.json` of pre-trained `stable-diffusion-xl-base-1.0` with our customized version for Hummingbird framework
+```
+cp -r ./hummingbird/model_index.json ./hummingbird/stable-diffusion-xl-base-1.0/
+```
+5. Download [HPSv2 weights](https://drive.google.com/file/d/1T4e6WqsS5lcs92HdmzQYonrfDH1Ub53T/view?usp=sharing) and put it here: `hpsv2/HPS_v2_compressed.pt`. 
+6. Download [PickScore model weights](https://drive.google.com/file/d/1UhR0zFXiEI-spt2QdX67FY9a0dcqa9xy/view?usp=sharing) and put it here: `pickscore/pickmodel/model.safetensors`. 
 
 ### Double check if everything is all set
 ```
-|-- textcraftor/
+|-- hummingbird-1/
     |-- hpsv2
         |-- HPS_v2_compressed.pt
     |-- pickscore
         |-- pickmodel
             |-- config.json
             |-- model.safetensors
-    |-- stable-diffusion-v1-5
-    |-- openprompts.csv
+    |-- hummingbird
+        |-- model_index.json
+        |-- lora_unet_65000
+            |-- adapter_config.json
+            |-- adapter_model.safetensors
+        |-- stable-diffusion-xl-base-1.0
+            |-- model_index.json (replaced by our customized version, see step 4 above)
+            |-- feature_extractor (cloned from CLIP-ViT-bigG-14-laion2B-39B-b160k)
+            |-- image_encoder (cloned from CLIP-ViT-bigG-14-laion2B-39B-b160k)
+            |-- text_encoder
+            |-- text_encoder_2
+            |-- tokenizer
+            |-- tokenizer_2
+            |-- unet
+            |-- vae
+            |-- ...
     |-- ...
 ```
 
+## Quick Start
+Given a reference image, Hummingbird can generate diverse variants of it and preserve specific properties/attributes, for example:
+```
+python3 inference.py --reference_image ./examples/image-2.jpg --attribute "color of skateboard wheels" --output_path output.jpg
+```
+
+
 ## Training 
-You can train TextCraftor with the following script: 
+You can train Hummingbird with the following script: 
 ```
-sh run_textcraftor.sh
+sh run_hummingbird.sh
 ```
-As discussed in the paper, you have a lot of freedom choosing the reward combinations, 
-and different combinations lead to different styles. 
-```
---clip 0.5 --aesthetic 1. --pickscore 1. --hpsv2 1.
-```
-By default, we backpropagate through the last 5 steps and test the finetuned text encoder on the last 15 steps, as discussed in Section.4.2. 
 
-In addition, Unet finetuning is also integrated in this code base. You can switch to Unet finetuning by simply swapping the learning rate and freeze the text encoder:
-```
---lr_text 0. --lr_unet 1e-6
-```
-Please note that to avoid domain shift and preserve the generalization property, it is not recommended to finetune text encoder and Unet together: 
-```
---lr_text 1e-6 --lr_unet 1e-6
-```
-though there would not be any bugs preventing you doing so. The recommended way is to finetune a text encoder first, 
-then load and freeze the text model and perform TextCraftor+Unet finetuning. 
+## Synthetic Data Generation
+You can generate synthetic data with Hummingbird framework, for e.g. with MME Perception dataset:
 
-Based on our observations, on an 8 x A100 80G node, 
-1. You can use `--batch-size 4` per GPU for TextCraftor training. 
-2. You can use `--batch-size 1` per GPU for Unet finetuning. 
-3. You can observe score and visual improvements in 500-1000 iterations. 
-
+```
+python3 image_generation.py --generator hummingbird --dataset mme --save_image_gen ./synthetic_mme
+```
 
 ## Testing 
-Taking the trained text encoder in our paper as an example (Table 1&2), 
-download [our checkpoint](https://drive.google.com/file/d/1CoiFGD60AZiDV_JlXRlxf-lLaHHNtVfp/view?usp=sharing) and put it here: `checkpoints/tc_text_e_0_iter_10000.pth`. 
-Then you can test on PartiPrompts by the following script: 
+Evaluate the fidelity of generated images w.r.t reference image using Test-Time Augmentation on MLLMs (LLaVA/InternVL2):
 ```
-sh test_parti.sh
+python3 test_hummingbird_mme.py --dataset mme --model llava --synthetic_dir ./synthetic_mme
 ```
-or test on HPSv2 benchmark by the following script: 
-```
-sh test_hpsv2.sh
-```
-The final scores will be logged when generation is finished, and generated images will be saved at `tests/`. 
+
 
 ## Acknowledgement
-We thank [runwayml and Hugging Face](https://huggingface.co/runwayml/stable-diffusion-v1-5) for open sourcing and maintaining Stable Diffusion models. 
-
-We thank [HPSv2](https://github.com/tgxs002/HPSv2), [PickScore](https://github.com/yuvalkirstain/PickScore) and [Aesthetic](https://laion.ai/blog/laion-aesthetics/) for the reward models. 
+We base on the implementation of [TextCraftor](https://github.com/snap-research/textcraftor). We thank [BLIP-2 QFormer](https://github.com/salesforce/LAVIS), [HPSv2](https://github.com/tgxs002/HPSv2), [PickScore](https://github.com/yuvalkirstain/PickScore), [Aesthetic](https://laion.ai/blog/laion-aesthetics/) for the reward models and MLLMs [LLaVA](https://github.com/haotian-liu/LLaVA), [InternVL2](https://github.com/OpenGVLab/InternVL) functioning as context descriptors in our framework.
 
 ## Citation
 If you find this work helpful, please cite our paper:
 ```BibTeX
-@article{li2024textcraftor,
-  title={TextCraftor: Your Text Encoder Can be Image Quality Controller},
-  author={Li, Yanyu and Liu, Xian and Kag, Anil and Hu, Ju and Idelbayev, Yerlan and Sagar, Dhritiman and Wang, Yanzhi and Tulyakov, Sergey and Ren, Jian},
-  journal={arXiv preprint arXiv:2403.18978},
-  year={2024}
+@inproceedings{le2025hummingbird,
+    title={Hummingbird: High Fidelity Image Generation via Multimodal Context Alignment},
+    author={Minh-Quan Le and Gaurav Mittal and Tianjian Meng and A S M Iftekhar and Vishwas Suryanarayanan and Barun Patra and Dimitris Samaras and Mei Chen},
+    booktitle={The Thirteenth International Conference on Learning Representations},
+    year={2025},
+    url={https://openreview.net/forum?id=6kPBThI6ZJ}
 }
 ```
