@@ -3,7 +3,7 @@
 
 ### Official implementation of paper: [Hummingbird: High Fidelity Image Generation via Multimodal Context Alignment](https://openreview.net/pdf?id=6kPBThI6ZJ) 
 
-![image/png](https://roar-ai.github.io/hummingbird/static/images/teaser_comparison_v1.png)
+![image/png](/assets/teaser_comparison_v1.png)
 
 
 ## Prerequisites
