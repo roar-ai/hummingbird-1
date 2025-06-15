@@ -25,11 +25,11 @@ def generate_images(pipe, args):
     pipe = accelerator.prepare(pipe)
     pipe = pipe.to(accelerator.device)
     processor = LlavaNextProcessor.from_pretrained(
-        "/mnt/minhquan/llava-v1.6-mistral-7b-hf"
+        "llava-v1.6-mistral-7b-hf"
     )
 
     vlm = LlavaNextForConditionalGeneration.from_pretrained(
-        "/mnt/minhquan/llava-v1.6-mistral-7b-hf",
+        "llava-v1.6-mistral-7b-hf",
         torch_dtype=torch.float16,
         low_cpu_mem_usage=True,
         use_flash_attention_2=True,
