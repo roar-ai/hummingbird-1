@@ -67,13 +67,13 @@ def main():
     from pipelines.pipeline_stable_diffusion_xl import HummingbirdPipeline
 
     pipe = HummingbirdPipeline.from_pretrained(
-        "/mnt/minhquan/stable-diffusion-xl-base-1.0"
+        "./hummingbird/stable-diffusion-xl-base-1.0"
     )
     from peft import PeftModel
 
     pipe.unet = PeftModel.from_pretrained(
         pipe.unet,
-        "/mnt/minhquan/imagecraftor/outputs/vqav2_gqa_sdxl_blip2_label_all_itm/ic_unet_65000",
+        "./hummingbird/lora_unet_65000",
     )
     
     pipe.unet.eval()
